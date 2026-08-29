@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Custom Glyph Maker</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f2f2f2;
+      --panel: #ffffff;
+      --text: #111111;
+      --border: #cccccc;
+      --accent: #2764ff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171717;
+        --panel: #242424;
+        --text: #f4f4f4;
+        --border: #555555;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 520px) 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 512px;
+      aspect-ratio: 1;
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      touch-action: none;
+      cursor: crosshair;
+      image-rendering: pixelated;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 10px;
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    .controls,
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      margin-top: 12px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+    }
+
+    input[type="range"] {
+      width: 180px;
+    }
+
+    .library {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      max-height: 600px;
+      overflow: auto;
+    }
+
+    .glyph {
+      display: grid;
+      grid-template-columns: 55px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .preview {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      background: white;
+      border: 1px solid var(--border);
+    }
+
+    .character {
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .muted {
+      opacity: 0.7;
+      font-size: 0.9rem;
+    }
+
+    .status {
+      min-height: 1.5em;
+      margin-top: 10px;
+      color: var(--accent);
+    }
+
+    @media (max-width: 800px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<main>
+  <h1>Custom Glyph Maker</h1>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>Draw or import a character</h2>
+
+      <canvas id="canvas" width="512" height="512"></canvas>
+
+      <div class="controls">
+        <button id="clearButton">Clear</button>
+        <button id="undoButton">Undo</button>
+        <button id="redoButton">Redo</button>
+        <button id="copyButton">Copy character</button>
+        <button id="pasteButton">Paste text</button>
+      </div>
+
+      <label>
+        Brush size
+        <input id="brushSize" type="range" min="1" max="50" value="14">
+      </label>
+
+      <label>
+        Assign this character or code
+        <input id="characterInput" type="text" maxlength="2"
+               placeholder="Example: A or ">
+      </label>
+
+      <div class="row">
+        <button id="saveButton">Save character</button>
+        <button id="loadButton">Load selected</button>
+      </div>
+
+      <h3>Import a photo</h3>
+
+      <input id="imageInput" type="file" accept="image/*">
+
+      <div class="controls">
+        <button id="processImageButton">Clean up photo</button>
+        <button id="invertButton">Invert drawing</button>
+      </div>
+
+      <p class="muted">
+        For unknown writing systems, the photo tool cleans and centers the shape.
+        It does not know the meaning of a new character.
+      </p>
+
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Saved characters</h2>
+
+      <div class="controls">
+        <button id="exportLibraryButton">Export library</button>
+        <button id="importLibraryButton">Import library</button>
+        <button id="downloadFontButton">Download font</button>
+        <button id="downloadZipButton">Download ZIP</button>
+        <input id="libraryInput" type="file" accept=".json" hidden>
+      </div>
+
+      <div id="library" class="library"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const brushSize = document.getElementById("brushSize");
+  const characterInput = document.getElementById("characterInput");
+  const imageInput = document.getElementById("imageInput");
+  const libraryElement = document.getElementById("library");
+  const statusElement = document.getElementById("status");
+
+  let drawing = false;
+  let lastX = 0;
+  let lastY = 0;
+  let undoStack = [];
+  let redoStack = [];
+  let library = JSON.parse(localStorage.getItem("customGlyphLibrary") || "[]");
+
+  function setStatus(message) {
+    statusElement.textContent = message;
+    setTimeout(() => {
+      if (statusElement.textContent === message) {
+        statusElement.textContent = "";
+      }
+    }, 3000);
+  }
+
+  function blankCanvas() {
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "black";
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }
+
+  function saveCanvasState() {
+    undoStack.push(canvas.toDataURL());
+    if (undoStack.length > 30) undoStack.shift();
+    redoStack = [];
+  }
+
+  function restoreImage(dataUrl) {
+    const image = new Image();
+    image.onload = () => {
+      blankCanvas();
+      ctx.drawImage(image, 0, 0);
+    };
+    image.src = dataUrl;
+  }
+
+  function positionFromEvent(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) * canvas.width / rect.width,
+      y: (event.clientY - rect.top) * canvas.height / rect.height
+    };
+  }
+
+  canvas.addEventListener("pointerdown", event => {
+    drawing = true;
+    const point = positionFromEvent(event);
+    lastX = point.x;
+    lastY = point.y;
+    saveCanvasState();
+
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, Number(brushSize.value) / 2, 0, Math.PI * 2);
+    ctx.fillStyle = "black";
+    ctx.fill();
+  });
+
+  canvas.addEventListener("pointermove", event => {
+    if (!drawing) return;
+
+    const point = positionFromEvent(event);
+
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = Number(brushSize.value);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+
+    lastX = point.x;
+    lastY = point.y;
+  });
+
+  window.addEventListener("pointerup", () => {
+    drawing = false;
+  });
+
+  document.getElementById("clearButton").onclick = () => {
+    saveCanvasState();
+    blankCanvas();
+  };
+
+  document.getElementById("undoButton").onclick = () => {
+    if (!undoStack.length) return;
+
+    redoStack.push(canvas.toDataURL());
+    restoreImage(undoStack.pop());
+  };
+
+  document.getElementById("redoButton").onclick = () => {
+    if (!redoStack.length) return;
+
+    undoStack.push(canvas.toDataURL());
+    restoreImage(redoStack.pop());
+  };
+
+  document.getElementById("copyButton").onclick = async () => {
+    const character = characterInput.value.trim();
+
+    if (!character) {
+      setStatus("Enter a character before copying.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(character);
+      setStatus("Character copied as text.");
+    } catch {
+      setStatus("Clipboard access was blocked by the browser.");
+    }
+  };
+
+  document.getElementById("pasteButton").onclick = async () => {
+    try {
+      characterInput.value = await navigator.clipboard.readText();
+      setStatus("Text pasted into the character field.");
+    } catch {
+      setStatus("Clipboard access was blocked by the browser.");
+    }
+  };
+
+  document.getElementById("saveButton").onclick = () => {
+    const character = characterInput.value.trim();
+
+    if (!character) {
+      setStatus("Enter a character first.");
+      return;
+    }
+
+    const existingIndex = library.findIndex(item => item.character === character);
+
+    const glyph = {
+      id: existingIndex >= 0 ? library[existingIndex].id : crypto.randomUUID(),
+      character,
+      codePoint: [...character][0].codePointAt(0),
+      image: canvas.toDataURL("image/png"),
+      created: new Date().toISOString()
+    };
+
+    if (existingIndex >= 0) {
+      library[existingIndex] = glyph;
+    } else {
+      library.push(glyph);
+    }
+
+    saveLibrary();
+    renderLibrary();
+    setStatus("Character saved.");
+  };
+
+  document.getElementById("loadButton").onclick = () => {
+    const selected = document.querySelector(".glyph.selected");
+
+    if (!selected) {
+      setStatus("Select a saved character first.");
+      return;
+    }
+
+    const glyph = library.find(item => item.id === selected.dataset.id);
+    if (!glyph) return;
+
+    characterInput.value = glyph.character;
+    restoreImage(glyph.image);
+    setStatus("Character loaded.");
+  };
+
+  function saveLibrary() {
+    localStorage.setItem("customGlyphLibrary", JSON.stringify(library));
+  }
+
+  function renderLibrary() {
+    libraryElement.innerHTML = "";
+
+    if (!library.length) {
+      libraryElement.innerHTML = `<p class="muted">No characters saved yet.</p>`;
+      return;
+    }
+
+    library.forEach(glyph => {
+      const item = document.createElement("div");
+      item.className = "glyph";
+      item.dataset.id = glyph.id;
+
+      const preview = document.createElement("img");
+      preview.className = "preview";
+      preview.src = glyph.image;
+      preview.alt = "Glyph preview";
+
+      const details = document.createElement("div");
+      details.innerHTML = `
+        <div class="character">${escapeHtml(glyph.character)}</div>
+        <div class="muted">U+${glyph.codePoint.toString(16).toUpperCase()}</div>
+      `;
+
+      const buttons = document.createElement("div");
+      buttons.className = "controls";
+
+      const selectButton = document.createElement("button");
+      selectButton.textContent = "Select";
+      selectButton.onclick = () => {
+        document.querySelectorAll(".glyph").forEach(x => x.classList.remove("selected"));
+        item.classList.add("selected");
+      };
+
+      const copyButton = document.createElement("button");
+      copyButton.textContent = "Copy";
+      copyButton.onclick = async () => {
+        await navigator.clipboard.writeText(glyph.character);
+        setStatus("Character copied as text.");
+      };
+
+      const deleteButton = document.createElement("button");
+      deleteButton.textContent = "Delete";
+      deleteButton.onclick = () => {
+        if (!confirm("Delete this character?")) return;
+        library = library.filter(x => x.id !== glyph.id);
+        saveLibrary();
+        renderLibrary();
+        setStatus("Character deleted.");
+      };
+
+      buttons.append(selectButton, copyButton, deleteButton);
+      item.append(preview, details, buttons);
+      libraryElement.appendChild(item);
+    });
+  }
+
+  function escapeHtml(value) {
+    return value.replace(/[&<>"']/g, character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[character]));
+  }
+
+  imageInput.addEventListener("change", event => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const image = new Image();
+
+    image.onload = () => {
+      blankCanvas();
+
+      const scale = Math.min(
+        canvas.width / image.width,
+        canvas.height / image.height
+      );
+
+      const width = image.width * scale;
+      const height = image.height * scale;
+      const x = (canvas.width - width) / 2;
+      const y = (canvas.height - height) / 2;
+
+      ctx.drawImage(image, x, y, width, height);
+      setStatus("Photo imported.");
+    };
+
+    image.src = URL.createObjectURL(file);
+  });
+
+  document.getElementById("processImageButton").onclick = () => {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      const brightness =
+        pixels[i] * 0.299 +
+        pixels[i + 1] * 0.587 +
+        pixels[i + 2] * 0.114;
+
+      const value = brightness < 180 ? 0 : 255;
+
+      pixels[i] = value;
+      pixels[i + 1] = value;
+      pixels[i + 2] = value;
+      pixels[i + 3] = 255;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    setStatus("Photo cleaned up.");
+  };
+
+  document.getElementById("invertButton").onclick = () => {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      pixels[i] = 255 - pixels[i];
+      pixels[i + 1] = 255 - pixels[i + 1];
+      pixels[i + 2] = 255 - pixels[i + 2];
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    setStatus("Drawing inverted.");
+  };
+
+  document.getElementById("exportLibraryButton").onclick = () => {
+    download(
+      "custom-glyph-library.json",
+      JSON.stringify(library, null, 2),
+      "application/json"
+    );
+  };
+
+  document.getElementById("importLibraryButton").onclick = () => {
+    document.getElementById("libraryInput").click();
+  };
+
+  document.getElementById("libraryInput").onchange = event => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result);
+
+        if (!Array.isArray(imported)) {
+          throw new Error("Invalid library");
+        }
+
+        library = imported;
+        saveLibrary();
+        renderLibrary();
+        setStatus("Library imported.");
+      } catch {
+        setStatus("That file is not a valid glyph library.");
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  function download(filename, data, type) {
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function createFont() {
+    if (!library.length) {
+      throw new Error("Save at least one character first.");
+    }
+
+    const fontGlyphs = [];
+
+    const notdef = new opentype.Glyph({
+      name: ".notdef",
+      unicode: 0,
+      advanceWidth: 1000,
+      path: new opentype.Path()
+    });
+
+    fontGlyphs.push(notdef);
+
+    for (const glyph of library) {
+      const path = new opentype.Path();
+      const image = new Image();
+
+      image.src = glyph.image;
+
+      const temporaryCanvas = document.createElement("canvas");
+      temporaryCanvas.width = 64;
+      temporaryCanvas.height = 64;
+
+      const temporaryContext = temporaryCanvas.getContext("2d");
+      temporaryContext.fillStyle = "white";
+      temporaryContext.fillRect(0, 0, 64, 64);
+      temporaryContext.drawImage(image, 0, 0, 64, 64);
+
+      const pixels = temporaryContext.getImageData(0, 0, 64, 64).data;
+      const scale = 1000 / 64;
+      const block = scale + 1;
+
+      for (let y = 0; y < 64; y++) {
+        for (let x = 0; x < 64; x++) {
+          const index = (y * 64 + x) * 4;
+          const darkness = 255 - pixels[index];
+
+          if (darkness > 100) {
+            const left = x * scale;
+            const bottom = 1000 - ((y + 1) * scale);
+            path.moveTo(left, bottom);
+            path.lineTo(left + block, bottom);
+            path.lineTo(left + block, bottom + block);
+            path.lineTo(left, bottom + block);
+            path.close();
+          }
+        }
+      }
+
+      fontGlyphs.push(new opentype.Glyph({
+        name: "glyph" + glyph.codePoint,
+        unicode: glyph.codePoint,
+        advanceWidth: 1000,
+        path
+      }));
+    }
+
+    return new opentype.Font({
+      familyName: "My Custom Language",
+      styleName: "Regular",
+      unitsPerEm: 1000,
+      ascender: 800,
+      descender: -200,
+      glyphs: fontGlyphs
+    });
+  }
+
+  document.getElementById("downloadFontButton").onclick = () => {
+    try {
+      const font = createFont();
+      const arrayBuffer = font.toArrayBuffer();
+      download(
+        "my-custom-language.ttf",
+        arrayBuffer,
+        "font/ttf"
+      );
+      setStatus("Font downloaded.");
+    } catch (error) {
+      setStatus(error.message);
+    }
+  };
+
+  document.getElementById("downloadZipButton").onclick = async () => {
+    try {
+      const zip = new JSZip();
+
+      const html = "<!doctype html>\\n" +
+        document.documentElement.outerHTML;
+
+      zip.file("index.html", html);
+      zip.file("custom-glyph-library.json", JSON.stringify(library, null, 2));
+
+      if (library.length) {
+        const font = createFont();
+        zip.file(
+          "my-custom-language.ttf",
+          font.toArrayBuffer()
+        );
+      }
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "custom-glyph-maker.zip";
+      link.click();
+
+      URL.revokeObjectURL(url);
+      setStatus("ZIP downloaded.");
+    } catch (error) {
+      setStatus(error.message);
+    }
+  };
+
+  blankCanvas();
+  renderLibrary();
+</script>
+</body>
+</html>
