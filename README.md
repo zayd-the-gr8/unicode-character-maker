@@ -34,4 +34,4 @@ if the site above is ever down, don't hesitate to contact me at zayd@emailthing.
 7. open the .HTML file (it is titled 'index.html')
 8. the application should open in your browser
 
-(NOTE: ALWAYS REMEMBER TO SAVE YOUR FILES)
+(NOTE: ALWAYS REMEMBER TO SAVE YOUR FILES. I ADDED A FEATURE SO IF THE DEVICE SHUTS DOWN, WEBPAGE REFRESHED, ECT; YOUR FONT WON'T BE DELETED. STILL, SAVE WHEN YOU'RE DONE- THANKS!)
