@@ -355,7 +355,7 @@
       await navigator.clipboard.writeText(character);
       setStatus("Character copied as text.");
     } catch {
-      setStatus("Clipboard access was blocked by the browser.");
+      setStatus("sorry, but the clipboard access was blocked by the browser. plz go back into your browser settings, and allow permission for clipboard");
     }
   };
 
@@ -401,7 +401,7 @@
     const selected = document.querySelector(".glyph.selected");
 
     if (!selected) {
-      setStatus("Select a saved character first.");
+      setStatus("You have not selected a saved character. To select one, please go to an existing character, toggle the select button, then toggle the &apos;load selected character button&apos;");
       return;
     }
 
@@ -461,7 +461,7 @@
       const deleteButton = document.createElement("button");
       deleteButton.textContent = "Delete";
       deleteButton.onclick = () => {
-        if (!confirm("Delete this character?")) return;
+        if (!confirm("Are you sure you'd like to delete this character?")) return;
         library = library.filter(x => x.id !== glyph.id);
         saveLibrary();
         renderLibrary();
