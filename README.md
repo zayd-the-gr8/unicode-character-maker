@@ -1,4 +1,4 @@
-A small browser-based tool for drawing, saving, copying, importing, and exporting custom characters.
+A small browser-based tool for drawing, saving, copying, importing, and exporting custom drawn characters.
 
 ## Features
 
