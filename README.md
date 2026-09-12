@@ -1,4 +1,6 @@
-A small browser-based tool for drawing, saving, copying, importing, and exporting custom drawn characters.
+<h1> SITE IS CURRENTLY DOWN, AND WILL BE ONLINE AT OCTOBER 1ST, 2026 - 11PM EST - </h1> 
+<divider>
+<h2> YOU CAN STILL RUN THIS LOCALLY (INSTRUCTIONS ON BOTTOM) </h2>
 
 ## Features
 
