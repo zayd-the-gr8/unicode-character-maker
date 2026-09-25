@@ -1,18 +1,21 @@
-<!doctype html>
+<!DOCTYPE HTML>
 <html lang="en">
+  
+  <link href='https://fonts.googleapis.com/css?family=Bitcount Grid Single' rel='stylesheet'>
 <head>
+  
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Unicode Character Maker</title>
-
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
 
   <style>
     :root {
       color-scheme: light dark;
-      --bg: #f2f2f2;
-      --panel: #ffffff;
+      --bg: #c2edf2;
+      --panel: #dcf5f7;
       --text: #111111;
       --border: #cccccc;
       --accent: #2764ff;
@@ -20,8 +23,8 @@
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #171717;
-        --panel: #242424;
+        --bg: #000000;
+        --panel: #022829;
         --text: #f4f4f4;
         --border: #555555;
       }
@@ -36,9 +39,9 @@
       padding: 20px;
       background: var(--bg);
       color: var(--text);
-      font-family: system-ui, sans-serif;
+      font-family: 'Bitcount Grid Single';font-size: 14px;
     }
-
+      
     main {
       max-width: 1100px;
       margin: auto;
@@ -168,7 +171,7 @@
 <body>
 <main>
   <h1>Unicode Character Maker</h1>
-  <h4>made with love by <a href=https://github.com/zayd-the-gr8/>zayd</a> ❤ </h1>
+  <h4>made with love by <a href=https://zayd.pages.dev>zayd</a> ❤ </h1>
   <div class="layout">
     <section class="panel">
       <h2>Draw or import a character</h2>
@@ -199,7 +202,7 @@
         <button id="loadButton">Load selected character</button>
       </div>
 
-      <h3>Import a photo</h3>
+      <h3>Import a photo from ur phone or laptop</h3>
 
       <input id="imageInput" type="file" accept="image/*">
 
@@ -210,7 +213,7 @@
 
       <p class="muted">
         For unknown writing character's/letters you make, the photo tool cleans and centers the shape.
-        It does not know the meaning of a new character... However this tool runs ondevice and isnt relible 24/7
+        It does not know the meaning of a new character... <strong>However this tool runs on-device and isnt relible 24/7</strong>
       </p>
 
       <div id="status" class="status"></div>
@@ -717,5 +720,34 @@
   blankCanvas();
   renderLibrary();
 </script>
+
+<body>
+  <p>this page was typed with codepen. <p> the page was assisted with GitHub Copilot for math, and operations <p> 
+
+Copyright (c) 2026, ZAYD AHMED 
+<p>
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+<p>
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+<p>
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+<p>
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  </p>
+</body>
+  
 </body>
 </html>
